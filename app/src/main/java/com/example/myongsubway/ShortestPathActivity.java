@@ -264,7 +264,7 @@ public class ShortestPathActivity extends AppCompatActivity {
     private void registerAlarm() {
         // 초를 밀리세컨드로 변환하기 위한 상수 , 현재는 디버깅을 위해 10으로 설정.
         // TODO : 실제 시간으로 설정하기 위해선 1000으로 바꿔야함
-        final int CONSTANT_FOR_CONVERT = 100;
+        final int CONSTANT_FOR_CONVERT = 1000;
 
         // 환승을 위해 하차할 때 마다 알람이 울리도록 설정한다.
         ArrayList<Integer> lines = allLines.get(pageType.ordinal());
@@ -273,6 +273,8 @@ public class ShortestPathActivity extends AppCompatActivity {
         int prevLine = lines.get(0);            // 이전 호선을 나타낸다. 초기값은 첫번째 역의 호선
         int cumulative = 0;                     // 다음역으로 갈 때마다 누적되는 시간을 나타낸다.
         int alarmCount = 0;                     // 알람을 등록할 때마다 증가하는 변수
+
+        int transferTime = 0;
 
         // 호선을 비교하여 알람을 등록할 때를 찾는다.
         for (int i = 0; i < lines.size(); i++) {
@@ -284,17 +286,22 @@ public class ShortestPathActivity extends AppCompatActivity {
             // 현재 역의 호선이 이전 역의 호선과 다른 호선이면 => 환승을 위해 하차해야하는 역이면
             if (lines.get(i) != prevLine) {
                 CustomAppGraph.Vertex getOffStation = graph.getVertices().get(path.get(i));
-                int halfTimeBeforeGetOff = cumulative - (graph.getAdjacent().get(path.get(i - 1)).get(path.get(i)).getCost(CustomAppGraph.SearchType.MIN_TIME) / 2);
-                int oneMinuteAgoBeforeGetOff = cumulative - 60;
+                int halfTimeBeforeGetOff = cumulative - (graph.getAdjacent().get(path.get(i - 1)).get(path.get(i)).getCost(CustomAppGraph.SearchType.MIN_TIME) / 2) + transferTime;
+                int oneMinuteAgoBeforeGetOff = cumulative - 60 + transferTime;
 
                 startAlarm(halfTimeBeforeGetOff * CONSTANT_FOR_CONVERT, alarmCount++, getOffStation);
                 startAlarm(oneMinuteAgoBeforeGetOff * CONSTANT_FOR_CONVERT, alarmCount++, getOffStation);
+
+                if (getOffStation.getTransferDistance() != -1) {
+                    transferTime += ((int) (getOffStation.getTransferDistance() / (graph.getWalkSpeed() * 1000 / 60))) * 60;
+                }
+
             }
             // 가장 마지막의 하차역이면
             else if (i == lines.size() - 1) {
                 CustomAppGraph.Vertex getOffStation = graph.getVertices().get(path.get(i));
-                int halfTimeBeforeGetOff = cumulative - (graph.getAdjacent().get(path.get(i - 1)).get(path.get(i)).getCost(CustomAppGraph.SearchType.MIN_TIME) / 2);
-                int oneMinuteAgoBeforeGetOff = cumulative - 60;
+                int halfTimeBeforeGetOff = cumulative - (graph.getAdjacent().get(path.get(i - 1)).get(path.get(i)).getCost(CustomAppGraph.SearchType.MIN_TIME) / 2) + transferTime;
+                int oneMinuteAgoBeforeGetOff = cumulative - 60  + transferTime;
 
                 startAlarm(halfTimeBeforeGetOff * CONSTANT_FOR_CONVERT, alarmCount++, getOffStation);
                 startAlarm(oneMinuteAgoBeforeGetOff * CONSTANT_FOR_CONVERT, alarmCount++, getOffStation);
@@ -437,6 +444,7 @@ public class ShortestPathActivity extends AppCompatActivity {
 
                             // 알람을 등록한다.
                             registerAlarm();
+                            Log.d("test", "alarm");
 
                         } else {
                             if (pageType == buttonType) {
